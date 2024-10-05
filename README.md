@@ -4,18 +4,18 @@ This is the implementation of the Generalised WNet. In particular, it is a trans
 
 To train:
 
-# try a plain wnet
+try a plain wnet:
 cd Scripts
 python PipelineScripts.py --wnet plain   --mixer MixerMaxRes7@3 --batchSize 64 --initLr 0.001 --epochs 11 --resumeTrain 1 --config PF64-PF50  --device 0
 
-# try a generalized wnet with only basic resblocks
+try a generalized wnet with only basic resblocks:
 python PipelineScripts.py --wnet general  --encoder EncoderCvCvCvCv  --decoder DecoderCvCvCvCv  --mixer MixerMaxRes7@3 --batchSize 64 --initLr 0.001 --epochs 55 --resumeTrain 0 --config PF64-PF50  --device 0
 
-# try a generalized wnet with only bottleneck resblocks
+try a generalized wnet with only bottleneck resblocks:
 python PipelineScripts.py --wnet general  --encoder EncoderCbnCbnCbnCbn  --decoder DecoderCbnCbnCbnCbn  --mixer MixerMaxRes7@3 --batchSize 64 --initLr 0.001 --epochs 55 --resumeTrain 0 --config PF64-PF50  --device 0
 
 
-# try a generalized wnet with Vision Transformers
+try a generalized wnet with Vision Transformers:
 python PipelineScripts.py --wnet general  --encoder EncoderCbnCbnCbnVit@2@24  --decoder DecoderVit@2@24CbnCbnCbn  --mixer MixerMaxRes7@3 --batchSize 64 --initLr 0.001 --epochs 55 --resumeTrain 0 --config PF64-PF50  --device 0
 
 
