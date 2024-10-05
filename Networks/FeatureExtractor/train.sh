@@ -1,0 +1,2 @@
+CUDA_VISIBLE_DEVICES=1 python Networks/FeatureExtractor/train.py --type content --gpu 1 --ckpt Networks/FeatureExtractor/ckpt_ &
+CUDA_VISIBLE_DEVICES=2 python Networks/FeatureExtractor/train.py --type style --gpu 2 --ckpt Networks/FeatureExtractor/ckpt_

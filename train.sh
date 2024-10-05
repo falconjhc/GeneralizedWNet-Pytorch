@@ -1,0 +1,2 @@
+python train.py --log_dir ./log/0703_full --gpu 3 --resume True --ckpt_path log/0701_full/model/checkpoint_best.pth
+# python train.py --log_dir ./log/0620_test --gpu 2 --resume True --ckpt_path log/0620/model/checkpoint_best.pth

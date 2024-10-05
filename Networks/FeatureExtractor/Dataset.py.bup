@@ -1,0 +1,80 @@
+import os
+import sys
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
+import yaml
+sys.path.append('./')
+from Networks.utils.ops import set_random,cv2torch,string2tensor,read_file_to_dict
+from config import CONFIG as cfg
+
+
+
+class Feature_Dataset(Dataset):
+    def __init__(self,config,type=None,is_train = True,
+                 content_dir='CASIA_Dataset/PrintedData_64Fonts/Simplified/GB2312_L1/',
+                 style_dir='CASIA_Dataset/PrintedData/GB2312_L1/',
+                 base_dir='/data0/haochuan/'):
+        self.type = type
+        self.content_yaml = config['content_yaml']    
+        self.reference_style_yaml = config['reference_style_yaml']
+        self.val_style_yaml = config['reference_style_yaml']
+        self.is_train = is_train
+        self.train_set = []
+        if self.type == 'content':
+            self.num = config['inputContentNum']
+            order_txt = cfg['Label0_list']      
+            with open(self.content_yaml, 'r', encoding='utf-8') as f:
+                files = yaml.load(f.read(), Loader=yaml.FullLoader)
+            data_path = os.path.join(base_dir,content_dir)
+
+        elif self.type == 'style':
+            files = {}
+            self.num = config['inputStyleNum']
+            order_txt = cfg['Label1_list']
+            data_path = os.path.join(base_dir,style_dir)
+            # 读取参考样式的YAML文件
+            with open(self.reference_style_yaml, 'r', encoding='utf-8') as f:
+                ref_files = yaml.load(f.read(), Loader=yaml.FullLoader)
+                files.update(ref_files)  # 将内容更新到files字典中
+
+            # 读取验证样式的YAML文件
+            with open(self.val_style_yaml, 'r', encoding='utf-8') as f:
+                val_files = yaml.load(f.read(), Loader=yaml.FullLoader)
+                files.update(val_files)  # 将内容更新到files字典中
+
+
+        self.order = read_file_to_dict(order_txt)
+
+        for k,values in files.items():
+            for value in values:
+                file_path = os.path.join(data_path,value)
+                self.train_set.append((file_path ,self.order[k]))
+
+        set_random()
+
+    def __getitem__(self, index):
+        transform = transforms.Compose([
+            transforms.ToTensor(),  # 将 numpy.ndarray 转换为 torch.Tensor
+            # transforms.Normalize((0.5,), (0.5,))  # 归一化到 [-1, 1]
+        ])
+        image = cv2torch(self.train_set[index][0],transform)
+        label = string2tensor(self.train_set[index][1])
+
+        raw_label = list(self.order.keys())[label]
+        if not self.is_train:
+            return image,label,raw_label
+        else:
+            return image,label
+    
+    def __len__(self):
+        return len(self.train_set) 
+    
+    
+if __name__ == "__main__":
+    cfg['content_yaml'] = 'cmy/test_list/content_dir.yaml'
+    cfg['GT_style_yaml'] = 'cmy/test_list/train_GT_dir.yaml'
+    cfg['reference_style_yaml'] = 'cmy/test_list/train_reference_style_dir.yaml'
+    casia_dataset = Feature_Dataset(cfg,type='content',is_train=False)
+    casia_loader = DataLoader(casia_dataset, batch_size=8, shuffle=False,drop_last=True)
+    for image,label in casia_loader:
+        print(label)
