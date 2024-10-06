@@ -6,8 +6,8 @@ dataPathRoot = '/data0/haochuan/'
 hyperParams = {
         'seed':1,
         'debugMode':1,
-        'expID':'Exp20241005',# experiment name prefix
-        'expDir': '/data-shared/server02/data1/haochuan/Character/Records20241005/',
+        'expID':'Exp20241006',# experiment name prefix
+        'expDir': '/data-shared/server02/data1/haochuan/Character/Records20241006/',
         
         # user interface
         'printInfoSeconds':3,
@@ -113,7 +113,7 @@ hyperParams = {
 penalties = {
         'generator_weight_decay_penalty': 0.0001,
         'discriminator_weight_decay_penalty':0.0003,
-        'Pixel_Reconstruction_Penalty':1,
+        'Pixel_Reconstruction_Penalty':3,
         'Lconst_content_Penalty':0.2,
         'Lconst_style_Penalty':0.2,
         'Discriminative_Penalty': 0,

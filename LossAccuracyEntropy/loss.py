@@ -45,23 +45,9 @@ class WLoss(nn.Module):
                                                     type='content').extractor
             thisContentExtractor.eval()
             thisContentExtractor.cuda()
-            
-            # loaded = torch.load(contentExtractor.path)
-            # new=list(loaded.items())
-            # my_model_kvpair=thisContentExtractor.state_dict()
-            # count=0
-            # for key,value in my_model_kvpair.items():
-            #     layer_name,weights=new[count]      
-            #     my_model_kvpair[key]=weights
-            #     count+=1
-            # thisContentExtractor.load_state_dict(my_model_kvpair)
             self.NameMappingLoading(thisContentExtractor, contentExtractor.path)
             self.contentExtractorList.append(thisContentExtractor)
-
-
-            
-            # thisContentExtractor.load_state_dict(torch.load(contentExtractor.path), strict=False)
-        
+                    
         self.styleExtractorList=[]
         for styleExtractor in config['extractorStyle']:
             thisStyleExtractor = FeatureExtractor(outputNums=len(config.datasetConfig.loadedLabel1Vec), 
@@ -72,31 +58,7 @@ class WLoss(nn.Module):
             # thisStyleExtractor.load_state_dict(torch.load(styleExtractor.path), strict=False)
             self.NameMappingLoading(thisStyleExtractor, styleExtractor.path)
             self.styleExtractorList.append(thisStyleExtractor)
-        # a=1
-        
-        # self.content_extractor = FeatureExtractor(output_nums=len(config.datasetConfig.loadedLabel0Vec), )
-        # self.content_extractor.eval()
-        # self.content_extractor.cuda()
-        # self.content_extractor_ckpt = config['extractorContent'][0].path
-        # for contentPath in config['extractorContent']:
-        #     self.content_extractor.load_state_dict(torch.load(self.content_extractor_ckpt))
-        
-        # if os.path.exists(content_extractor_ckpt):
-        #     self.content_extractor.load_state_dict(torch.load(self.content_extractor_ckpt))
-        # else: 
-        #     print('No pretrained content extractor')
-        #     return
-        
-        # self.style_extractor = FeatureExtractor(output_nums=len(config.datasetConfig.loadedLabel1Vec))
-        # # self.style_extractor = FeatureExtractor(output_nums=80)
-        # self.style_extractor.eval()
-        # self.style_extractor.cuda()
-        # self.style_extractor_ckpt = config['extractorStyle'][0].path
-        # if os.path.exists(self.style_extractor_ckpt):
-        #     self.style_extractor.load_state_dict(torch.load(self.style_extractor_ckpt))
-        # else: 
-        #     print('No pretrained content extractor')
-        #     return
+     
 
         
     def NameMappingLoading(self,extractor, path):
@@ -109,25 +71,29 @@ class WLoss(nn.Module):
             thisExtractorDict[key]=weights
             count+=1
         extractor.load_state_dict(thisExtractorDict)
-        print(path+" loaded")
+        print(path.split('/')[-3]+'/'+path.split('/')[-2]+" Loaded.")
         
             
 
-    def generator_loss(self, reshaped_content_list,content_category,\
-                        reshaped_style_list, style_category,\
+    def GeneratorLoss(self, reshaped_content_list,content_category,reshaped_content_list_ongenerated, content_category_ongenerated,\
+                        reshaped_style_list, style_category,reshaped_style_list_onGenerated, style_category_onGenerated,\
                         decode_output_list,GT_output, GT,content_onehot,style_onehot):
         # l1 loss
         l1_loss = F.l1_loss(decode_output_list[-1], GT, reduction='mean')
 
         # const_content loss
         GT_content_enc = GT_output[0]
-        const_content_loss = F.mse_loss(reshaped_content_list[-1],GT_content_enc)
+        const_content_loss_onReal = F.mse_loss(reshaped_content_list[-1],GT_content_enc)
+        const_content_loss_onFake = F.mse_loss(reshaped_content_list_ongenerated[-1],GT_content_enc)
+        
+        
         # const_style loss
         GT_style_enc = GT_output[1]
-        reshaped_styles = reshaped_style_list[-1]
-        reshaped_styles = reshaped_styles.permute(1,0,2,3,4)
-        style_losses = [F.mse_loss(enc_style, GT_style_enc) for enc_style in reshaped_styles]
-        const_style_loss = torch.mean(torch.stack(style_losses))
+        reshaped_styles = reshaped_style_list[-1] # batchsize * input style num * channels * width * height
+        reshaped_styles = reshaped_styles.permute(1,0,2,3,4)#  input style num *batchsize * channels * width * height
+        const_style_loss_onReal = [F.mse_loss(enc_style, GT_style_enc) for enc_style in reshaped_styles] # enc_style: batchsize * channels * width * height
+        const_style_loss_onReal = torch.mean(torch.stack(const_style_loss_onReal))
+        const_style_loss_onFake = F.mse_loss(reshaped_style_list_onGenerated[-1],GT_style_enc)
 
         # category loss
         content_category_OnOrg,content_category_OnGen = 0,0
@@ -149,12 +115,15 @@ class WLoss(nn.Module):
             style_category_OnGen += F.cross_entropy(fake_logits, onehot)
         style_category_OnOrg /= len(GT_style_category)
         style_category_OnGen /= len(GT_style_category)
-        return l1_loss,const_content_loss,const_style_loss,content_category_OnOrg,content_category_OnGen,style_category_OnOrg,style_category_OnGen
+        return l1_loss,const_content_loss_onReal,const_style_loss_onReal,const_content_loss_onFake,const_style_loss_onFake,\
+            content_category_OnOrg,content_category_OnGen,style_category_OnOrg,style_category_OnGen
 
-    def FeatureExtractor_loss(self,GT,imgFake):
+    def FeatureExtractorLoss(self,GT,imgFake):
         # content_extractor
-        contentMSE=0.0
-        for idx, thisContentExtractor in enumerate(self.contentExtractorList):
+        contentSumMSE=0.0
+        contentMSEList=[]
+        # travel for different feature extractors
+        for idx1, thisContentExtractor in enumerate(self.contentExtractorList):
             thisContentMSE=0
             with torch.no_grad():
                 _,GT_content_features = thisContentExtractor(GT)
@@ -164,69 +133,76 @@ class WLoss(nn.Module):
                     len(fake_content_features):
                 print('content length not paired')
                 return
-            for idx,(GT_content_feature,fake_content_feature) in enumerate(zip(GT_content_features,fake_content_features)):
-                thisContentMSE += F.mse_loss(GT_content_feature,fake_content_feature)*self.FeatureExtractorPenalty_ContentPrototype[0]*HighLevelFeaturePenaltyPctg[idx]
-            thisContentMSE /= len(HighLevelFeaturePenaltyPctg)
-            contentMSE+=thisContentMSE*self.FeatureExtractorPenalty_ContentPrototype[idx]
-        contentMSE = contentMSE / len(self.contentExtractorList)
+            
+            # travel for different evaluating layers
+            for idx2,(GT_content_feature,fake_content_feature) in enumerate(zip(GT_content_features,fake_content_features)):
+                thisContentMSE += F.mse_loss(GT_content_feature,fake_content_feature)*HighLevelFeaturePenaltyPctg[idx2]
+            thisContentMSE /= sum(HighLevelFeaturePenaltyPctg)
+            contentMSEList.append(thisContentMSE)
+            contentSumMSE+=thisContentMSE*self.FeatureExtractorPenalty_ContentPrototype[idx1]
+        contentSumMSE = contentSumMSE / sum(self.FeatureExtractorPenalty_ContentPrototype)
 
 
         # style_extractor
-        styleMSE=0.0
-        for idx, thsiStyleExtractor in enumerate(self.styleExtractorList):
+        styleSumMSE=0.0
+        styleMSEList=[]
+        for idx1, thsiStyleExtractor in enumerate(self.styleExtractorList):
             thisStyleMSE = 0
             with torch.no_grad():
-                _,GT_style_features = self.styleExtractorList[0](GT)
-                _,fake_style_features = self.styleExtractorList[0](imgFake)
+                _,GT_style_features = thsiStyleExtractor(GT)
+                _,fake_style_features = thsiStyleExtractor(imgFake)
             if not len(HighLevelFeaturePenaltyPctg) == \
                     len(GT_style_features) == \
                     len(fake_style_features):
                 print('style length not paired')
                 return
-            for idx,(GT_style_feature,fake_style_feature) in enumerate(zip(GT_style_features,fake_style_features)):
-                thisStyleMSE += F.mse_loss(GT_style_feature,fake_style_feature)*self.FeatureExtractorPenalty_StyleReference[0]*HighLevelFeaturePenaltyPctg[idx]
-            thisStyleMSE /= len(HighLevelFeaturePenaltyPctg)
-            styleMSE+=thisStyleMSE
-        styleMSE = styleMSE / len(self.styleExtractorList)
+            for idx2,(GT_style_feature,fake_style_feature) in enumerate(zip(GT_style_features,fake_style_features)):
+                thisStyleMSE += F.mse_loss(GT_style_feature,fake_style_feature)*HighLevelFeaturePenaltyPctg[idx2]
+            thisStyleMSE /= sum(HighLevelFeaturePenaltyPctg)
+            styleMSEList.append(thisStyleMSE)
+            styleSumMSE+=thisStyleMSE*self.FeatureExtractorPenalty_StyleReference[idx1]
+        styleSumMSE = styleSumMSE / sum(self.FeatureExtractorPenalty_StyleReference)
 
-        return contentMSE,styleMSE
+        return contentSumMSE,styleSumMSE,contentMSEList,styleMSEList
 
 
 
-    def forward(self, reshaped_enc_content_list,content_category,\
-                    reshaped_enc_style_list, style_category,\
+    def forward(self, reshaped_enc_content_list,content_category,enc_content_onGenerated_list, content_category_onGenerated, \
+                    reshaped_enc_style_list, style_category,enc_style_onGenerated_list, style_category_onGenerated,\
                     decode_output_list,GT_output,GT,content_onehot,style_onehot):
         # generator_const_loss
-        l1_loss,const_content_loss,const_style_loss,content_category_OnOrg,content_category_OnGen,style_category_OnOrg,style_category_OnGen = \
-            self.generator_loss(reshaped_enc_content_list,content_category,\
-                                reshaped_enc_style_list, style_category,\
+        l1_loss,const_content_loss_onReal,const_style_loss_onReal,const_content_loss_onFake,const_style_loss_onFake, content_category_OnOrg,content_category_OnGen,style_category_OnOrg,style_category_OnGen = \
+            self.GeneratorLoss(reshaped_enc_content_list,content_category,enc_content_onGenerated_list, content_category_onGenerated,\
+                                reshaped_enc_style_list, style_category,enc_style_onGenerated_list, style_category_onGenerated,\
                                 decode_output_list,GT_output, GT,content_onehot,style_onehot)
         # generator_category_loss
-        contentMSE,styleMSE = self.FeatureExtractor_loss(GT=GT,imgFake=decode_output_list[-1])
+        deepPerceptualContentSum,deepPerceptualStyleSum,contentMSEList,styleMSEList =\
+            self.FeatureExtractorLoss(GT=GT,imgFake=decode_output_list[-1])
 
-        if const_content_loss <= 1e8: self.Lconst_content_Penalty = 0.
-        if const_style_loss <= 1e8: self.Lconst_style_Penalty = 0.        
-        # sumLossG = l1_loss * self.Pixel_Reconstruction_Penalty + \
-        #             const_content_loss * self.Lconst_content_Penalty + \
-        #             const_style_loss * self.Lconst_style_Penalty + \
-        #             (content_category_OnOrg + content_category_OnGen + \
-        #              style_category_OnOrg + style_category_OnGen)* self.Generator_Categorical_Penalty + \
-        #             contentMSE + \
-        #             styleMSE
+        # if const_content_loss <= 1e8: 
+        #     self.Lconst_content_Penalty = 0.
+        # if const_style_loss <= 1e8: 
+        #     self.Lconst_style_Penalty = 0.        
         sumLossG = l1_loss * self.Pixel_Reconstruction_Penalty + \
-                    const_content_loss * self.Lconst_content_Penalty + \
-                    const_style_loss * self.Lconst_style_Penalty 
+                    (const_content_loss_onReal+const_content_loss_onFake) * self.Lconst_content_Penalty + \
+                    (const_style_loss_onReal+const_style_loss_onFake) * self.Lconst_style_Penalty 
+                    
+        lossDict = {'l1_loss':l1_loss,
+                    'const_content_loss_onReal':const_content_loss_onReal,
+                    'const_style_loss_onReal':const_style_loss_onReal,
+                    'const_content_loss_onFake':const_content_loss_onFake,
+                    'const_style_loss_onFake':const_style_loss_onFake,
+                    'content_category_OnOrg':content_category_OnOrg,
+                    'content_category_OnGen':content_category_OnGen,
+                    'style_category_OnOrg':style_category_OnOrg,
+                    'style_category_OnGen':style_category_OnGen,
+                    'deepPerceptualContent':deepPerceptualContentSum,
+                    'deepPerceptualStyle':deepPerceptualStyleSum,
+                    'deepPerceptualContentList': contentMSEList,
+                    'deepPerceptualStyleList': styleMSEList}
 
 
-        return sumLossG,{'l1_loss':l1_loss,
-                         'const_content_loss':const_content_loss,
-                         'const_style_loss':const_style_loss,
-                         'content_category_OnOrg':content_category_OnOrg,
-                         'content_category_OnGen':content_category_OnGen,
-                         'style_category_OnOrg':style_category_OnOrg,
-                         'style_category_OnGen':style_category_OnGen,
-                         'contentMSE':contentMSE,
-                         'styleMSE':styleMSE}
+        return sumLossG,lossDict
 
 if __name__ == '__main__':
     cfg['content_yaml'] = 'cmy/test_list/content_dir.yaml'

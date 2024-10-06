@@ -10,15 +10,14 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            //"args": "--encoder EncoderCvCvCvVit@2@24  --decoder DecoderCvCvCvVit@2@3  --mixer MixerMaxRes7@3 --batchSize 5 --initLr 0.001 --epochs 9 --resumeTrain 0 --config debug  --device 1 --debug 1"
             //"args": "--wnet general --encoder EncoderCvCvCvCv  --decoder DecoderCvCvCvCv  --mixer MixerMaxRes7@3 --batchSize 7 --initLr 0.001 --epochs 9 --resumeTrain 0 --config debug  --device 1 --debug 1"
 
             "args": "--wnet plain   --mixer MixerMaxRes7@3 --batchSize 7 --initLr 0.001 --epochs 11 --resumeTrain 1 --config debug  --device 1 --debug 1"
 
-            //"args": "--encoder EncoderCvCvCvVit@2@24  --decoder DecoderCvCvCvVit@2@3  --mixer MixerMaxRes7@3 --batchSize 256 --initLr 0.001 --epochs 55 --resumeTrain 0 --config PF64-PF50  --device 1 "
 
 
-            //"args": "--gpu 1 --ckpt_path /data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/ --type content"
+
+            //"args": "--wnet plain   --mixer MixerMaxRes7@3 --batchSize 128 --initLr 0.001 --epochs 65 --resumeTrain 1 --config PF64-PF50  --device 0  --debug 1"
 
         }
     ]

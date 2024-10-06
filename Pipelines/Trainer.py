@@ -24,9 +24,12 @@ import glob
 
 
 import random
-DISP_CONTENT_STYLE_NUM=3
-LOG_INTERVAL=30
+DISP_CONTENT_STYLE_NUM=5
+# LOG_INTERVAL=30
 
+
+NUM_SAMPLE_PER_EPOCH=1000
+RECORD_PCTG=NUM_SAMPLE_PER_EPOCH/100
 
 sys.path.append('./')
 from Pipelines.Dataset import CASIA_Dataset
@@ -127,7 +130,7 @@ class Trainer(nn.Module):
 
 
         # resume
-        if self.config.userInterface.resumeTrain:
+        if self.config.userInterface.resumeTrain==1:
             logging.info('Load model from %s'% self.config.userInterface.expDir)
             list_of_files = glob.glob(self.config.userInterface.expDir+'/*.pth')
             latest_file =max(list_of_files, key=os.path.getctime)
@@ -173,36 +176,53 @@ class Trainer(nn.Module):
         self.writer.add_image(mark+' Image', output , dataformats='CHW', global_step=step)
         
         # if not lossG==-1:
-        self.writer.add_scalar('00-SumLossG-'+mark, lossG, global_step=step)
+        self.writer.add_scalar('01-LossGenerator/SumLossG-'+mark, lossG, global_step=step)
         self.writer.add_scalar('01-LossReconstruction/L1-'+mark, lossDict['l1_loss'], global_step=step)
-        self.writer.add_scalar('01-LossGenerator/ConstContent-'+mark, lossDict['const_content_loss'], global_step=step)
-        self.writer.add_scalar('01-LossGenerator/ConstStyle-'+mark, lossDict['const_style_loss'], global_step=step)
+        self.writer.add_scalar('01-LossGenerator/ConstContentOnReal-'+mark, lossDict['const_content_loss_onReal'], global_step=step)
+        self.writer.add_scalar('01-LossGenerator/ConstStyleOnReal-'+mark, lossDict['const_style_loss_onReal'], global_step=step)
+        self.writer.add_scalar('01-LossGenerator/ConstContentOnFake-'+mark, lossDict['const_content_loss_onFake'], global_step=step)
+        self.writer.add_scalar('01-LossGenerator/ConstStyleOnFake-'+mark, lossDict['const_style_loss_onFake'], global_step=step)
+        
         self.writer.add_scalar('01-LossGenerator/CategoryRealContent-'+mark, lossDict['content_category_OnOrg'], global_step=step)
         self.writer.add_scalar('01-LossGenerator/CategoryFakeContent-'+mark, lossDict['content_category_OnGen'], global_step=step)
         self.writer.add_scalar('01-LossGenerator/CategoryRealStyle-'+mark, lossDict['style_category_OnOrg'], global_step=step)
         self.writer.add_scalar('01-LossGenerator/CategoryFakeStyle-'+mark, lossDict['style_category_OnGen'], global_step=step)          
-        self.writer.add_scalar('011-LossDeepPerceptual-ContentMSE-'+mark, lossDict['contentMSE'], global_step=step)
-        self.writer.add_scalar('011-LossDeepPerceptual-StyleMSE-'+mark, lossDict['styleMSE'], global_step=step)
+        self.writer.add_scalar('01-LossReconstruction/DeepPerceptualContentSum-'+mark, lossDict['deepPerceptualContent'], global_step=step)
+        self.writer.add_scalar('01-LossReconstruction/DeepPerceptualStyleSum-'+mark, lossDict['deepPerceptualStyle'], global_step=step)
+        
+        
+        for idx, thisContentExtractor in enumerate(self.config.extractorContent):
+            thisContentExtractorName = thisContentExtractor.name
+            self.writer.add_scalar('011-LossDeepPerceptual-ContentMSE/' +thisContentExtractorName + '-'+mark, 
+                                   lossDict['deepPerceptualContentList'][idx], global_step=step)
+        for idx, thisStyleExtractor in enumerate(self.config.extractorStyle):
+            thisStyleExtractorName = thisStyleExtractor.name
+            self.writer.add_scalar('013-LossDeepPerceptual-StyleMSE/' +thisStyleExtractorName + '-'+mark, 
+                                   lossDict['deepPerceptualStyleList'][idx], global_step=step)
+        
         self.writer.add_scalar('00-LearningRate', self.scheculer.get_lr()[0], global_step=step)
         self.trainStart = time()
     
     def TrainOneEpoch(self, epoch):
         time1 = time()
-        trainTimeStart = time()
+        # trainTimeStart = time()
+        thisRoundStartItr = 0
         for idx,(contents, styles, GT_style,content_onehot,style_onehot) in \
-            tqdm(enumerate(self.train_loader), total=len(self.train_loader), desc="Epoch: %d Training Progress" % epoch):
+            tqdm(enumerate(self.train_loader), total=len(self.train_loader), desc="Epoch: %d Training Progress" % (epoch+1)):
             contents, styles, GT_style,content_onehot,style_onehot = contents.cuda(), styles.cuda(), GT_style.cuda() ,content_onehot.cuda(),style_onehot.cuda()
             # reshape_contents = contents.reshape(self.batchsize*self.input_content_num,1,64,64)            
             reshape_styles = styles.reshape(self.config.trainParams.batchSize*self.config.datasetConfig.inputStyleNum,1,64,64)
 
-            reshaped_content_list,content_category, \
-            reshaped_enc_style_list, style_category, \
+            reshaped_content_list,content_category, reshaped_content_list_onGenerated,content_category_onGenerated,\
+            reshaped_enc_style_list, style_category, reshaped_enc_style_list_onGenerated, style_category_onGenerated,\
             decode_output_list,GT_output = self.forward(contents,reshape_styles,GT_style)
 
             sumLossG,Loss_dict = self.sumLoss(reshaped_content_list,
                                               content_category,
+                                              reshaped_content_list_onGenerated,content_category_onGenerated,
                                               reshaped_enc_style_list, 
                                               style_category,
+                                              reshaped_enc_style_list_onGenerated, style_category_onGenerated,
                                               decode_output_list,
                                               GT_output,GT_style,
                                               content_onehot,style_onehot)
@@ -213,10 +233,11 @@ class Trainer(nn.Module):
             self.iter_num = self.iter_num + 1
 
             
-            if time()-trainTimeStart>LOG_INTERVAL or idx==0 or idx == len(self.train_loader)-1:
+            if idx*float(NUM_SAMPLE_PER_EPOCH)/(len(self.train_loader)*1.0)-thisRoundStartItr>RECORD_PCTG or idx==0 or idx == len(self.train_loader)-1:
+                thisRoundStartItr =idx*float(NUM_SAMPLE_PER_EPOCH)/(len(self.train_loader)*1.0)
                 self.SummaryWriting(evalContents=contents, evalStyles=styles, evalGTs=GT_style, evalFakes=decode_output_list,  
-                                    step=epoch*1000+int(idx/len(self.train_loader)*1000), lossG=sumLossG, lossDict=Loss_dict, mark='Train')
-                trainTimeStart = time()
+                                    step=epoch*NUM_SAMPLE_PER_EPOCH+int(idx/len(self.train_loader)*NUM_SAMPLE_PER_EPOCH), lossG=sumLossG, lossDict=Loss_dict, mark='Train')
+                # trainTimeStart = time()
 
         
         time2 = time()
@@ -225,31 +246,36 @@ class Trainer(nn.Module):
     def TestOneEpoch(self,epoch):
         is_train = False
         self.model.eval()
-        testStart = time()
+        # testStart = time()
         with torch.no_grad():
+            thisRoundStartItr = 0
             for idx,(val_contents, val_styles, val_GT_style,val_content_onehot,val_style_onehot) in \
                 tqdm(enumerate(self.val_loader), total=len(self.val_loader), desc="Epoch: %d Test at Training" % epoch):
                 contents, styles, GT_style,content_onehot,style_onehot = val_contents.cuda(), val_styles.cuda(), val_GT_style.cuda() ,val_content_onehot.cuda(),val_style_onehot.cuda()
                 reshape_styles = styles.reshape(self.config.trainParams.batchSize*self.config.datasetConfig.inputStyleNum,1,64,64)
                 
-                enc_content_list,content_category, \
-                reshaped_enc_style_list, style_category, \
+                enc_content_list,content_category, enc_content_onGenerated_list, content_category_onGenerated,\
+                reshaped_enc_style_list, style_category, enc_style_onGenerated_list, style_category_onGenerated,\
                 decode_output_list,GT_output = self.forward(contents,reshape_styles,GT_style,is_train=is_train)
                 
                 
                 sumLossG,Loss_dict = self.sumLoss(enc_content_list,
                                               content_category,
+                                              enc_content_onGenerated_list, content_category_onGenerated,
                                               reshaped_enc_style_list, 
                                               style_category,
+                                              enc_style_onGenerated_list, style_category_onGenerated,
                                               decode_output_list,
                                               GT_output,GT_style,
                                               content_onehot,style_onehot)
                 
                 
-                if time()-testStart>LOG_INTERVAL//10 or idx==0 or idx == len(self.val_loader)-1:
+                if idx*float(NUM_SAMPLE_PER_EPOCH)/(len(self.val_loader)*1.0)-thisRoundStartItr>RECORD_PCTG or idx==0 or idx == len(self.val_loader)-1:
+                    thisRoundStartItr = idx*float(NUM_SAMPLE_PER_EPOCH)/(len(self.val_loader)*1.0)
+                    
                     self.SummaryWriting(evalContents=contents, evalStyles=styles, evalGTs=GT_style, evalFakes=decode_output_list,  
-                                        step=epoch*1000+int(idx/len(self.val_loader)*1000), lossG=sumLossG, lossDict=Loss_dict, mark='Test')
-                    testStart=time()
+                                        step=epoch*NUM_SAMPLE_PER_EPOCH+int(idx/len(self.val_loader)*NUM_SAMPLE_PER_EPOCH), lossG=sumLossG, lossDict=Loss_dict, mark='Test')
+                    # testStart=time()
                 
 
     def Pipelines(self):
@@ -259,7 +285,7 @@ class Trainer(nn.Module):
         training_epoch_list = range(self.start_epoch,self.config.trainParams.epochs,1)      
         self.trainStart = time()
         
-        self.TestOneEpoch(0)
+        self.TestOneEpoch(self.start_epoch)
         for epoch in training_epoch_list:    
             self.TrainOneEpoch(epoch)
             self.TestOneEpoch(epoch+1)
@@ -268,7 +294,7 @@ class Trainer(nn.Module):
                 'state_dict':self.model.state_dict(),
                 'optimizer':self.optimizer.state_dict(),
             }
-            torch.save(state,self.config.userInterface.expDir+'/CkptEpoch%d.pth' % epoch+1)
+            torch.save(state,self.config.userInterface.expDir+'/CkptEpoch%d.pth' % (epoch+1))
             logging.info(f'save model at {epoch+1} epoch')
             self.scheculer.step()
         
@@ -280,10 +306,10 @@ class Trainer(nn.Module):
         logging.info('Training total time: %f hours.' % training_time)
         
     def forward(self,reshape_contents,reshape_styles,GT_style,is_train=True):
-        enc_content_list,content_category, \
-        reshaped_enc_style_list, style_category, \
+        enc_content_list,content_category,enc_content_onGenerated_list, content_category_onGenerated,\
+        reshaped_enc_style_list, style_category, enc_style_onGenerated_list, style_category_onGenerated,\
             decode_output_list,GT_output = self.model(reshape_contents,reshape_styles,GT_style,is_train)
-        return enc_content_list,content_category, \
-            reshaped_enc_style_list, style_category, \
-            decode_output_list,GT_output
+        return enc_content_list,content_category,enc_content_onGenerated_list, content_category_onGenerated,\
+            reshaped_enc_style_list, style_category, enc_style_onGenerated_list, style_category_onGenerated,\
+                decode_output_list,GT_output
            

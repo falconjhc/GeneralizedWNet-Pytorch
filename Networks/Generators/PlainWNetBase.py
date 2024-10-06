@@ -98,9 +98,26 @@ class WNetGenerator(nn.Module):
 
         # decode
         decode_output_list = self.decoder(mix_output)
-        return enc_content_list, max_content_category, \
-                reshaped_style_list, max_style_category, \
-                decode_output_list,GT_output #style的loss需要5个都算
+        
+        
+        
+        generated = decode_output_list[-1]
+        contentCategoryOnGenerated, contentFeaturesOnGenerated = self.content_encoder(generated.repeat((1,self.config.datasetConfig.inputContentNum,1,1)))
+        reshaped_content_category_onGenerated = self.reshape_tensor(contentCategoryOnGenerated, is_train)
+        max_content_category_onGenerated = torch.max(reshaped_content_category_onGenerated,dim=1)[0]
+        # = [ii.cnn for ii in contentFeaturesOnGenerated]
+        
+        
+        styleCategoryOnGenerated, styleFeaturesOnGenerated = self.style_encoder(generated)
+        # enc_style_onGenerated_list= [ii.cnn for ii in styleFeaturesOnGenerated]
+        # styleFeaturesOnGenerated=styleFeaturesOnGenerated.cnn
+        reshaped_style_category_onGenerated = self.reshape_tensor(styleCategoryOnGenerated, is_train)
+        max_style_category_onGenerated = torch.max(reshaped_style_category_onGenerated,dim=1)[0]
+        
+        
+        return enc_content_list, max_content_category,contentFeaturesOnGenerated,max_content_category_onGenerated, \
+                reshaped_style_list, max_style_category,styleFeaturesOnGenerated,max_style_category_onGenerated, \
+                decode_output_list, GT_output #style的loss需要5个都算
     
     def reshape_tensor(self,input_tensor,is_train):
         # if is_train:

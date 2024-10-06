@@ -388,7 +388,7 @@ class ParameterSetting(object):
     def GenerateExpID(self, wnet, encoder, mixer, decoder):
         if wnet == 'general':
         
-            id = "ExpGeneralizedWnet%s-%s-%s" % (self.config.expID, encoder, mixer)
+            id = "Exp-GeneralizedWnet-%s-%s-%s" % (self.config.expID, encoder, mixer)
             if decoder is not None:
                 id = id+"-%s" % (decoder)
             # id = id + '-'+encoder+'_Encoder'
