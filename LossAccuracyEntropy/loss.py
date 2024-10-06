@@ -18,6 +18,8 @@ from Networks.FeatureExtractor.FeatureExtractorBase import FeatureExtractorBase 
 from Networks.Generators.PlainWNetBase import WNetGenerator
 from config import CONFIG as cfg
 HighLevelFeaturePenaltyPctg=[0.1,0.15,0.2,0.25,0.3]
+eps = 1e-9
+
 
 class WLoss(nn.Module):
     def __init__(self, config, penalty):
@@ -39,25 +41,27 @@ class WLoss(nn.Module):
         #     featureExtractorDevice=config.device[0]
        
         self.contentExtractorList=[]
-        for contentExtractor in config['extractorContent']:
-            thisContentExtractor = FeatureExtractor(outputNums=len(config.datasetConfig.loadedLabel0Vec), 
-                                                    modelSelect=contentExtractor.name,
-                                                    type='content').extractor
-            thisContentExtractor.eval()
-            thisContentExtractor.cuda()
-            self.NameMappingLoading(thisContentExtractor, contentExtractor.path)
-            self.contentExtractorList.append(thisContentExtractor)
+        if 'extractorContent' in config:
+            for contentExtractor in config['extractorContent']:
+                thisContentExtractor = FeatureExtractor(outputNums=len(config.datasetConfig.loadedLabel0Vec), 
+                                                        modelSelect=contentExtractor.name,
+                                                        type='content').extractor
+                thisContentExtractor.eval()
+                thisContentExtractor.cuda()
+                self.NameMappingLoading(thisContentExtractor, contentExtractor.path)
+                self.contentExtractorList.append(thisContentExtractor)
                     
         self.styleExtractorList=[]
-        for styleExtractor in config['extractorStyle']:
-            thisStyleExtractor = FeatureExtractor(outputNums=len(config.datasetConfig.loadedLabel1Vec), 
-                                                    modelSelect=styleExtractor.name,
-                                                    type='style').extractor
-            thisStyleExtractor.eval()
-            thisStyleExtractor.cuda()
-            # thisStyleExtractor.load_state_dict(torch.load(styleExtractor.path), strict=False)
-            self.NameMappingLoading(thisStyleExtractor, styleExtractor.path)
-            self.styleExtractorList.append(thisStyleExtractor)
+        if 'extractorStyle' in config:
+            for styleExtractor in config['extractorStyle']:
+                thisStyleExtractor = FeatureExtractor(outputNums=len(config.datasetConfig.loadedLabel1Vec), 
+                                                        modelSelect=styleExtractor.name,
+                                                        type='style').extractor
+                thisStyleExtractor.eval()
+                thisStyleExtractor.cuda()
+                # thisStyleExtractor.load_state_dict(torch.load(styleExtractor.path), strict=False)
+                self.NameMappingLoading(thisStyleExtractor, styleExtractor.path)
+                self.styleExtractorList.append(thisStyleExtractor)
      
 
         
@@ -140,7 +144,7 @@ class WLoss(nn.Module):
             thisContentMSE /= sum(HighLevelFeaturePenaltyPctg)
             contentMSEList.append(thisContentMSE)
             contentSumMSE+=thisContentMSE*self.FeatureExtractorPenalty_ContentPrototype[idx1]
-        contentSumMSE = contentSumMSE / sum(self.FeatureExtractorPenalty_ContentPrototype)
+        contentSumMSE = contentSumMSE / (sum(self.FeatureExtractorPenalty_ContentPrototype)+eps)
 
 
         # style_extractor
@@ -161,7 +165,7 @@ class WLoss(nn.Module):
             thisStyleMSE /= sum(HighLevelFeaturePenaltyPctg)
             styleMSEList.append(thisStyleMSE)
             styleSumMSE+=thisStyleMSE*self.FeatureExtractorPenalty_StyleReference[idx1]
-        styleSumMSE = styleSumMSE / sum(self.FeatureExtractorPenalty_StyleReference)
+        styleSumMSE = styleSumMSE / (sum(self.FeatureExtractorPenalty_StyleReference)+eps)
 
         return contentSumMSE,styleSumMSE,contentMSEList,styleMSEList
 

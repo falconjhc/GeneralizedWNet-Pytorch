@@ -86,25 +86,28 @@ hyperParams = {
 
         # feature extractor parametrers
         'true_fake_target_extractor_dir': [],
-        'content_prototype_extractor_dir':['/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/VGG11Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/VGG13Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/VGG16Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/VGG19Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/ResNet18/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/ResNet34/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/ResNet50/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/ResNet101/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/ResNet152/BestExtractor.pth'],
+        # 'content_prototype_extractor_dir':['/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/VGG11Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/VGG13Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/VGG16Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/VGG19Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/ResNet18/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/ResNet34/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/ResNet50/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/ResNet101/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Content/ResNet152/BestExtractor.pth'],
         
-        'style_reference_extractor_dir':  ['/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/VGG11Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/VGG13Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/VGG16Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/VGG19Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/ResNet18/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/ResNet34/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/ResNet50/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/ResNet101/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/ResNet152/BestExtractor.pth']
+        # 'style_reference_extractor_dir':  ['/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/VGG11Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/VGG13Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/VGG16Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/VGG19Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/ResNet18/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/ResNet34/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/ResNet50/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/ResNet101/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/Debug/Ckpts/Style/ResNet152/BestExtractor.pth']
+        
+        'content_prototype_extractor_dir':[],
+        'style_reference_extractor_dir':  []
 
 
 }
@@ -123,7 +126,10 @@ penalties = {
         'Batch_StyleFeature_Discrimination_Penalty':0,
         # 'FeatureExtractorPenalty_ContentPrototype': [0.5,0.1,0.1,0.1,0.1,0.1],
         # 'FeatureExtractorPenalty_StyleReference':[1,0.5,0.5,0.3,0.3],
-        'FeatureExtractorPenalty_ContentPrototype': [1,1,1,1,1,1,1,1,1],
-        'FeatureExtractorPenalty_StyleReference':[1,1,1,1,1,1,1,1,1],
+        # 'FeatureExtractorPenalty_ContentPrototype': [1,1,1,1,1,1,1,1,1],
+        # 'FeatureExtractorPenalty_StyleReference':[1,1,1,1,1,1,1,1,1],
+        
+        'FeatureExtractorPenalty_ContentPrototype': [],
+        'FeatureExtractorPenalty_StyleReference':[],
 }
 

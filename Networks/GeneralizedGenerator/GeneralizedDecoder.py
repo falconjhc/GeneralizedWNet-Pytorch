@@ -77,7 +77,8 @@ class GeneralizedDecoder(nn.Module):
                                                              'VitDim': outVitDim},
                                      config={'option': self.decodingArchitectureList[0],
                                              'upsample': True,
-                                             'skip': None})
+                                             'skip': None,
+                                             'lastLayer': False})
         
 
         Block2 = FindKeys(BlockDict, self.decodingArchitectureList[1])[0]
@@ -112,7 +113,8 @@ class GeneralizedDecoder(nn.Module):
                                                              'VitDim': outVitDim},
                                      config={'option': self.decodingArchitectureList[1],
                                              'upsample': True,
-                                             'skip': [thisFeatureCNNShape, thisFeatureVitShape]})
+                                             'skip': [thisFeatureCNNShape, thisFeatureVitShape],
+                                             'lastLayer': False})
         
         
         
@@ -148,7 +150,8 @@ class GeneralizedDecoder(nn.Module):
                                                              'VitDim': outVitDim},
                                      config={'option': self.decodingArchitectureList[2],
                                              'upsample': True,
-                                             'skip': [thisFeatureCNNShape, thisFeatureVitShape]})
+                                             'skip': [thisFeatureCNNShape, thisFeatureVitShape],
+                                             'lastLayer': False})
         
         
         Block4 = FindKeys(BlockDict, self.decodingArchitectureList[3])[0]
@@ -183,7 +186,8 @@ class GeneralizedDecoder(nn.Module):
                                                              'VitDim': outVitDim},
                                      config={'option': self.decodingArchitectureList[3],
                                              'upsample': True,
-                                             'skip': [thisFeatureCNNShape, thisFeatureVitShape]})
+                                             'skip': [thisFeatureCNNShape, thisFeatureVitShape],
+                                             'lastLayer': False})
         
         
         
@@ -202,7 +206,8 @@ class GeneralizedDecoder(nn.Module):
                                                              'VitDim': -1},
                                      config={'option': self.decodingArchitectureList[3],
                                              'upsample': False,
-                                             'skip': None})
+                                             'skip': None,
+                                             'lastLayer': True})
         
         
     def forward(self,encodedLayers):

@@ -236,6 +236,7 @@ class DecodingVisionTransformerBlock(nn.Module):
 class DecodingBasicBlock(nn.Module):
     def __init__(self, inDims, outDims, config):
         super(DecodingBasicBlock,self).__init__()
+        self.lastLayer = config['lastLayer']
         if inDims['HW']==outDims['HW']//2 or config['upsample']:
             stride=2
         else:
@@ -250,6 +251,7 @@ class DecodingBasicBlock(nn.Module):
             self.conv1 = deconv3x3(inDims['MapC'], outDims['MapC'], stride)
         self.bn1 = nn.BatchNorm2d(outDims['MapC'])
         self.relu = nn.ReLU(inplace=True)
+        self.tanh = nn.Tanh()
         self.conv2 = deconv3x3(outDims['MapC'], outDims['MapC'])
         self.bn2 = nn.BatchNorm2d(outDims['MapC'])
         self.stride = stride
@@ -269,7 +271,10 @@ class DecodingBasicBlock(nn.Module):
         outcnn = self.bn2(outcnn)
 
         outcnn += identity
-        outcnn = self.relu(outcnn)
+        if not self.lastLayer:
+            outcnn = self.relu(outcnn)
+        else:
+            outcnn = self.tanh(outcnn)
         outvit = self.patchExtractor(outcnn)
         out =BlockFeature(cnn=outcnn, vit=outvit)
         return out
@@ -278,6 +283,7 @@ class DecodingBasicBlock(nn.Module):
 class DecodingBottleneckBlock(nn.Module):
     def __init__(self, inDims, outDims,  config):
         super(DecodingBottleneckBlock,self).__init__()
+        self.lastLayer = config['lastLayer']
         if inDims['HW']==outDims['HW']//2 or config['upsample']:
             stride=2
         else:
@@ -302,6 +308,7 @@ class DecodingBottleneckBlock(nn.Module):
         self.conv3 = deconv1x1(outDims['MapC'], outDims['MapC'])
         self.bn3 = nn.BatchNorm2d(outDims['MapC'])
         self.relu = nn.ReLU(inplace=True)
+        self.tanh = nn.Tanh()
         # self.downsample = downsample
         self.stride = stride
         self.patchExtractor=PatchExtractor(featureDim=outDims['MapC'])
@@ -327,8 +334,10 @@ class DecodingBottleneckBlock(nn.Module):
         outcnn = self.bn3(outcnn)
         
         outcnn += identity
-        outcnn = self.relu(outcnn)
-        
+        if not self.lastLayer:
+            outcnn = self.relu(outcnn)
+        else:
+            outcnn = self.tanh(outcnn)
         outvit = self.patchExtractor(outcnn)
         out  =BlockFeature(cnn=outcnn, vit=outvit)
         return out

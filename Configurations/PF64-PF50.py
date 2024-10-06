@@ -6,7 +6,7 @@ dataPathRoot = '/data0/haochuan/'
 hyperParams = {
         'seed':1,
         'debugMode':1,
-        'expID':'Exp20241006',# experiment name prefix
+        'expID':'20241007',# experiment name prefix
         'expDir': '/data-shared/server02/data1/haochuan/Character/Records20241006/',
         
         # user interface
@@ -86,25 +86,28 @@ hyperParams = {
 
         # feature extractor parametrers
         'true_fake_target_extractor_dir': [],
-        'content_prototype_extractor_dir':['/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/VGG11Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/VGG13Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/VGG16Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/VGG19Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/ResNet18/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/ResNet34/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/ResNet50/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/ResNet101/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/ResNet152/BestExtractor.pth'],
+        # 'content_prototype_extractor_dir':['/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/VGG11Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/VGG13Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/VGG16Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/VGG19Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/ResNet18/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/ResNet34/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/ResNet50/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/ResNet101/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Content/ResNet152/BestExtractor.pth'],
         
-        'style_reference_extractor_dir':  ['/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/VGG11Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/VGG13Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/VGG16Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/VGG19Net/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/ResNet18/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/ResNet34/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/ResNet50/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/ResNet101/BestExtractor.pth',
-                                           '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/ResNet152/BestExtractor.pth']
+        # 'style_reference_extractor_dir':  ['/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/VGG11Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/VGG13Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/VGG16Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/VGG19Net/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/ResNet18/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/ResNet34/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/ResNet50/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/ResNet101/BestExtractor.pth',
+        #                                    '/data-shared/server09/data1/haochuan/Codes/MuyinWNet/FeatureExtractorTrained/20240928New/Ckpts/Style/ResNet152/BestExtractor.pth']
+        
+        'content_prototype_extractor_dir':[],
+        'style_reference_extractor_dir':  []
 
 
 }
@@ -123,7 +126,10 @@ penalties = {
         'Batch_StyleFeature_Discrimination_Penalty':0,
         
         
-        'FeatureExtractorPenalty_ContentPrototype': [1,1,1,1,1,1,1,1,1],
-        'FeatureExtractorPenalty_StyleReference':[1,1,1,1,1,1,1,1,1],
+        # 'FeatureExtractorPenalty_ContentPrototype': [1,1,1,1,1,1,1,1,1],
+        # 'FeatureExtractorPenalty_StyleReference':[1,1,1,1,1,1,1,1,1],
+        
+        'FeatureExtractorPenalty_ContentPrototype': [],
+        'FeatureExtractorPenalty_StyleReference':[],
 }
 

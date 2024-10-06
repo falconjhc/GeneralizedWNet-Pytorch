@@ -191,16 +191,19 @@ class Trainer(nn.Module):
         self.writer.add_scalar('01-LossReconstruction/DeepPerceptualStyleSum-'+mark, lossDict['deepPerceptualStyle'], global_step=step)
         
         
-        for idx, thisContentExtractor in enumerate(self.config.extractorContent):
-            thisContentExtractorName = thisContentExtractor.name
-            self.writer.add_scalar('011-LossDeepPerceptual-ContentMSE/' +thisContentExtractorName + '-'+mark, 
-                                   lossDict['deepPerceptualContentList'][idx], global_step=step)
-        for idx, thisStyleExtractor in enumerate(self.config.extractorStyle):
-            thisStyleExtractorName = thisStyleExtractor.name
-            self.writer.add_scalar('013-LossDeepPerceptual-StyleMSE/' +thisStyleExtractorName + '-'+mark, 
-                                   lossDict['deepPerceptualStyleList'][idx], global_step=step)
+        if 'extractorContent' in self.config:
+            for idx, thisContentExtractor in enumerate(self.config.extractorContent):
+                thisContentExtractorName = thisContentExtractor.name
+                self.writer.add_scalar('011-LossDeepPerceptual-ContentMSE/' +thisContentExtractorName + '-'+mark, 
+                                    lossDict['deepPerceptualContentList'][idx], global_step=step)
         
-        self.writer.add_scalar('00-LearningRate', self.scheculer.get_lr()[0], global_step=step)
+        if 'extractorStyle' in self.config:
+            for idx, thisStyleExtractor in enumerate(self.config.extractorStyle):
+                thisStyleExtractorName = thisStyleExtractor.name
+                self.writer.add_scalar('013-LossDeepPerceptual-StyleMSE/' +thisStyleExtractorName + '-'+mark, 
+                                    lossDict['deepPerceptualStyleList'][idx], global_step=step)
+            
+            self.writer.add_scalar('00-LearningRate', self.scheculer.get_lr()[0], global_step=step)
         self.trainStart = time()
     
     def TrainOneEpoch(self, epoch):
