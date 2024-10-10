@@ -95,23 +95,37 @@ class CASIA_Dataset(Dataset):
         print(f'dataset cost:{(end_time-strat_time):.2f}s')
 
     def __getitem__(self, index):
+        # transform1 = transforms.Compose([
+        #     transforms.ToTensor(),  # 将 numpy.ndarray 转换为 torch.Tensor
+        #     transforms.Normalize((0.5,), (0.5,))  # 归一化到 [-1, 1]
+        # ])
+        
+        # transform2 = transforms.Compose([
+            
+        #     # transforms.RandomHorizontalFlip(p=0.5),
+        #     # transforms.RandomVerticalFlip(p=0.5),
+        #     transforms.RandomResizedCrop(size=(64,64), scale=(0.8,1.0), antialias=True),
+        # ])
+        
+        # transform = transforms.Compose([
+            
+        #     transforms.RandomHorizontalFlip(p=0.5),
+        #     transforms.RandomVerticalFlip(p=0.5),
+        #     transforms.RandomResizedCrop(size=(64,64), scale=(0.8,1.0), antialias=True),
+        #     transforms.ToTensor(),  # 将 numpy.ndarray 转换为 torch.Tensor
+        #     transforms.Normalize((0.5,), (0.5,))  # 归一化到 [-1, 1]
+        # ])
+        
+        
         transform1 = transforms.Compose([
             transforms.ToTensor(),  # 将 numpy.ndarray 转换为 torch.Tensor
             transforms.Normalize((0.5,), (0.5,))  # 归一化到 [-1, 1]
         ])
-        
         transform2 = transforms.Compose([
-            
-            # transforms.RandomHorizontalFlip(p=0.5),
-            # transforms.RandomVerticalFlip(p=0.5),
-            transforms.RandomResizedCrop(size=(64,64), scale=(0.8,1.0), antialias=True),
+            # transforms.ToTensor(),  # 将 numpy.ndarray 转换为 torch.Tensor
+            # transforms.Normalize((0.5,), (0.5,))  # 归一化到 [-1, 1]
         ])
-        
         transform = transforms.Compose([
-            
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomVerticalFlip(p=0.5),
-            transforms.RandomResizedCrop(size=(64,64), scale=(0.8,1.0), antialias=True),
             transforms.ToTensor(),  # 将 numpy.ndarray 转换为 torch.Tensor
             transforms.Normalize((0.5,), (0.5,))  # 归一化到 [-1, 1]
         ])

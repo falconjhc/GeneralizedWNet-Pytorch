@@ -89,10 +89,10 @@ class WNetMixer(nn.Module):
             self.residualBlockNum=int(residualBlockNum)
             self.residualAtLayer=int(residualAtLayer)
         
-        
-        if self.fusionContentStyle is not 'Smp': # not simple mixer
+        self.fusingOperations = []
+        if self.fusionContentStyle != 'Smp': # not simple mixer
             
-            self.fusingOperations = []
+            
             for ii in range(len(self.encodingFeatureShape)):
                 if ii ==0:
                     continue # skip the STEM feature
@@ -144,6 +144,11 @@ class WNetMixer(nn.Module):
                     self.fusingOperations.append(nn.Sequential(*thisResList))
                 else:
                     self.fusingOperations.append(nn.Identity())
+        else:
+            for ii in range(len(self.encodingFeatureShape)):
+                if ii==0:
+                    continue
+                self.fusingOperations.append(nn.Identity())
  
 
     

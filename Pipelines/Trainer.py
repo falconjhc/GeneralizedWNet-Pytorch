@@ -77,14 +77,43 @@ class Trainer(nn.Module):
         #self.model.cuda(device=self.config.device[0])
         self.model.cuda()
         
+        # # xavier initialization
+        # for m in self.model.modules():
+        #     if isinstance(m, (nn.Conv2d, nn.Linear)):
+        #         nn.init.xavier_uniform_(m.weight)
+        
         # xavier initialization
         for m in self.model.modules():
-            if isinstance(m, (nn.Conv2d, nn.Linear)):
+            # if isinstance(m, nn.Conv2d):
+            #     # nn.init.xavier_normal_(m.weight.data)
+            #     nn.init.xavier_uniform_(m.weight.data)
+            #     if m.bias is not None:
+            #         nn.init.constant_(m.bias.data, 0.0)
+            # elif isinstance(m, nn.Linear):
+            #     nn.init.xavier_uniform_(m.weight.data)
+            #     if m.bias is not None:
+            #         nn.init.zeros_(m.bias.data)
+            # # elif isinstance(m, nn.BatchNorm2d):
+            # #     m.weight.data.fill_(1)
+            # #     m.bias.data.zero_()
+
+            if isinstance(m, (nn.Conv2d)):
                 nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                     nn.init.constant_(m.bias.data, 0.0)
+            elif isinstance(m, (nn.Linear)):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                     nn.init.constant_(m.bias.data, 0.0)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+            
+                # nn.init.zeros_(m.bias)
         
 
         # optimizer
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.trainParams.initLr , 
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.config.trainParams.initLr , betas=(0.5,0.999),
                                           weight_decay=self.penalties.generator_weight_decay_penalty)
         lrGamma = np.power(0.01, 1.0 / (self.config.trainParams.epochs - 1))
         self.scheculer = torch.optim.lr_scheduler.ExponentialLR(gamma=lrGamma,optimizer=self.optimizer)
@@ -155,33 +184,36 @@ class Trainer(nn.Module):
         selectedStyleIdx = random.sample(range(evalStyles.shape[1]), dispStyleNum)
         out_grids = []
         for batch_id in range(self.config.trainParams.batchSize):
-            decode_vis = evalFakes[-1][batch_id]
+            decode_vis = evalFakes[batch_id]
             GT_vis = evalGTs[batch_id]
-            
-            
+            difference = torch.abs(decode_vis-GT_vis)
             contents_vis = evalContents[batch_id][selectedContentIdx].unsqueeze(1)
             styles_vis = evalStyles[batch_id][selectedStyleIdx].unsqueeze(1)
-            
-
             out_list=[]
-            for x in contents_vis: out_list.append(x)
-            for x in styles_vis: out_list.append(x)
-            out_list.append(decode_vis)
+            for x in contents_vis: 
+                out_list.append(x)
             out_list.append(GT_vis)
+            out_list.append(difference)
+            out_list.append(decode_vis)
+            for x in styles_vis: 
+                out_list.append(x)
             
-
-            out_grid = make_grid([x for x in out_list], nrow=dispContentNum+dispStyleNum+2, normalize=True, scale_each=True)
+            out_grid = make_grid([x for x in out_list], nrow=dispContentNum+dispStyleNum+3, normalize=True, scale_each=True)
             out_grids.append(out_grid) 
         output = make_grid(out_grids, nrow=1, normalize=True, scale_each=True)
-        self.writer.add_image(mark+' Image', output , dataformats='CHW', global_step=step)
+        if mark == 'Train':
+            self.writer.add_image("TrainImage", output , dataformats='CHW', global_step=step)
+        elif mark == 'Test':
+            self.writer.add_image("TestImage", output , dataformats='CHW', global_step=step)
+        
         
         # if not lossG==-1:
         self.writer.add_scalar('01-LossGenerator/SumLossG-'+mark, lossG, global_step=step)
         self.writer.add_scalar('01-LossReconstruction/L1-'+mark, lossDict['l1_loss'], global_step=step)
-        self.writer.add_scalar('01-LossGenerator/ConstContentOnReal-'+mark, lossDict['const_content_loss_onReal'], global_step=step)
-        self.writer.add_scalar('01-LossGenerator/ConstStyleOnReal-'+mark, lossDict['const_style_loss_onReal'], global_step=step)
-        self.writer.add_scalar('01-LossGenerator/ConstContentOnFake-'+mark, lossDict['const_content_loss_onFake'], global_step=step)
-        self.writer.add_scalar('01-LossGenerator/ConstStyleOnFake-'+mark, lossDict['const_style_loss_onFake'], global_step=step)
+        self.writer.add_scalar('01-LossGenerator/ConstContentReal-'+mark, lossDict['const_content_loss_onReal'], global_step=step)
+        self.writer.add_scalar('01-LossGenerator/ConstStyleReal-'+mark, lossDict['const_style_loss_onReal'], global_step=step)
+        self.writer.add_scalar('01-LossGenerator/ConstContentFake-'+mark, lossDict['const_content_loss_onFake'], global_step=step)
+        self.writer.add_scalar('01-LossGenerator/ConstStyleFake-'+mark, lossDict['const_style_loss_onFake'], global_step=step)
         
         self.writer.add_scalar('01-LossGenerator/CategoryRealContent-'+mark, lossDict['content_category_OnOrg'], global_step=step)
         self.writer.add_scalar('01-LossGenerator/CategoryFakeContent-'+mark, lossDict['content_category_OnGen'], global_step=step)
@@ -211,24 +243,20 @@ class Trainer(nn.Module):
         # trainTimeStart = time()
         thisRoundStartItr = 0
         for idx,(contents, styles, GT_style,content_onehot,style_onehot) in \
-            tqdm(enumerate(self.train_loader), total=len(self.train_loader), desc="Epoch: %d Training Progress" % (epoch+1)):
+            tqdm(enumerate(self.train_loader), total=len(self.train_loader), desc="Epoch: %d Training" % (epoch+1)):
             contents, styles, GT_style,content_onehot,style_onehot = contents.cuda(), styles.cuda(), GT_style.cuda() ,content_onehot.cuda(),style_onehot.cuda()
             # reshape_contents = contents.reshape(self.batchsize*self.input_content_num,1,64,64)            
             reshape_styles = styles.reshape(self.config.trainParams.batchSize*self.config.datasetConfig.inputStyleNum,1,64,64)
 
-            reshaped_content_list,content_category, reshaped_content_list_onGenerated,content_category_onGenerated,\
-            reshaped_enc_style_list, style_category, reshaped_enc_style_list_onGenerated, style_category_onGenerated,\
-            decode_output_list,GT_output = self.forward(contents,reshape_styles,GT_style)
-
-            sumLossG,Loss_dict = self.sumLoss(reshaped_content_list,
-                                              content_category,
-                                              reshaped_content_list_onGenerated,content_category_onGenerated,
-                                              reshaped_enc_style_list, 
-                                              style_category,
-                                              reshaped_enc_style_list_onGenerated, style_category_onGenerated,
-                                              decode_output_list,
-                                              GT_output,GT_style,
-                                              content_onehot,style_onehot)
+            encodedContentFeatures, encodedStyleFeatures, encodedContentCategory, encodedStyleCategory, generated = \
+                    self.forward(contents,reshape_styles,GT_style)
+            
+            sumLossG,Loss_dict = self.sumLoss(encodedContentFeatures, 
+                                              encodedStyleFeatures, 
+                                              encodedContentCategory, 
+                                              encodedStyleCategory, 
+                                              generated, GT_style, 
+                                              content_onehot, style_onehot)
 
             self.optimizer.zero_grad()
             sumLossG.backward()
@@ -238,9 +266,9 @@ class Trainer(nn.Module):
             
             if idx*float(NUM_SAMPLE_PER_EPOCH)/(len(self.train_loader)*1.0)-thisRoundStartItr>RECORD_PCTG or idx==0 or idx == len(self.train_loader)-1:
                 thisRoundStartItr =idx*float(NUM_SAMPLE_PER_EPOCH)/(len(self.train_loader)*1.0)
-                self.SummaryWriting(evalContents=contents, evalStyles=styles, evalGTs=GT_style, evalFakes=decode_output_list,  
-                                    step=epoch*NUM_SAMPLE_PER_EPOCH+int(idx/len(self.train_loader)*NUM_SAMPLE_PER_EPOCH), lossG=sumLossG, lossDict=Loss_dict, mark='Train')
-                # trainTimeStart = time()
+                self.SummaryWriting(evalContents=contents, evalStyles=styles, evalGTs=GT_style, evalFakes=generated,  
+                                    step=epoch*NUM_SAMPLE_PER_EPOCH+int(idx/len(self.train_loader)*NUM_SAMPLE_PER_EPOCH), 
+                                    lossG=sumLossG, lossDict=Loss_dict, mark='Train')
 
         
         time2 = time()
@@ -253,32 +281,27 @@ class Trainer(nn.Module):
         with torch.no_grad():
             thisRoundStartItr = 0
             for idx,(val_contents, val_styles, val_GT_style,val_content_onehot,val_style_onehot) in \
-                tqdm(enumerate(self.val_loader), total=len(self.val_loader), desc="Epoch: %d Test at Training" % epoch):
+                tqdm(enumerate(self.val_loader), total=len(self.val_loader), desc="Epoch: %d Testing" % epoch):
                 contents, styles, GT_style,content_onehot,style_onehot = val_contents.cuda(), val_styles.cuda(), val_GT_style.cuda() ,val_content_onehot.cuda(),val_style_onehot.cuda()
                 reshape_styles = styles.reshape(self.config.trainParams.batchSize*self.config.datasetConfig.inputStyleNum,1,64,64)
                 
-                enc_content_list,content_category, enc_content_onGenerated_list, content_category_onGenerated,\
-                reshaped_enc_style_list, style_category, enc_style_onGenerated_list, style_category_onGenerated,\
-                decode_output_list,GT_output = self.forward(contents,reshape_styles,GT_style,is_train=is_train)
-                
-                
-                sumLossG,Loss_dict = self.sumLoss(enc_content_list,
-                                              content_category,
-                                              enc_content_onGenerated_list, content_category_onGenerated,
-                                              reshaped_enc_style_list, 
-                                              style_category,
-                                              enc_style_onGenerated_list, style_category_onGenerated,
-                                              decode_output_list,
-                                              GT_output,GT_style,
-                                              content_onehot,style_onehot)
+                encodedContentFeatures, encodedStyleFeatures, encodedContentCategory, encodedStyleCategory, generated = \
+                    self.forward(contents,reshape_styles,GT_style,is_train=is_train)
+                    
+                sumLossG,Loss_dict = self.sumLoss(encodedContentFeatures, 
+                                                  encodedStyleFeatures, 
+                                                  encodedContentCategory, 
+                                                  encodedStyleCategory, 
+                                                  generated, GT_style, 
+                                                  content_onehot, style_onehot)
                 
                 
                 if idx*float(NUM_SAMPLE_PER_EPOCH)/(len(self.val_loader)*1.0)-thisRoundStartItr>RECORD_PCTG or idx==0 or idx == len(self.val_loader)-1:
                     thisRoundStartItr = idx*float(NUM_SAMPLE_PER_EPOCH)/(len(self.val_loader)*1.0)
                     
-                    self.SummaryWriting(evalContents=contents, evalStyles=styles, evalGTs=GT_style, evalFakes=decode_output_list,  
-                                        step=epoch*NUM_SAMPLE_PER_EPOCH+int(idx/len(self.val_loader)*NUM_SAMPLE_PER_EPOCH), lossG=sumLossG, lossDict=Loss_dict, mark='Test')
-                    # testStart=time()
+                    self.SummaryWriting(evalContents=contents, evalStyles=styles, evalGTs=GT_style, evalFakes=generated,  
+                                        step=epoch*NUM_SAMPLE_PER_EPOCH+int(idx/len(self.val_loader)*NUM_SAMPLE_PER_EPOCH), 
+                                        lossG=sumLossG, lossDict=Loss_dict, mark='Test')
                 
 
     def Pipelines(self):
@@ -309,10 +332,5 @@ class Trainer(nn.Module):
         logging.info('Training total time: %f hours.' % training_time)
         
     def forward(self,reshape_contents,reshape_styles,GT_style,is_train=True):
-        enc_content_list,content_category,enc_content_onGenerated_list, content_category_onGenerated,\
-        reshaped_enc_style_list, style_category, enc_style_onGenerated_list, style_category_onGenerated,\
-            decode_output_list,GT_output = self.model(reshape_contents,reshape_styles,GT_style,is_train)
-        return enc_content_list,content_category,enc_content_onGenerated_list, content_category_onGenerated,\
-            reshaped_enc_style_list, style_category, enc_style_onGenerated_list, style_category_onGenerated,\
-                decode_output_list,GT_output
+        return self.model(reshape_contents,reshape_styles,GT_style,is_train)
            

@@ -59,71 +59,67 @@ class WNetGenerator(nn.Module):
     
     def forward(self, content_inputs,style_inputs,GT, is_train=True):
         # encode
-        content_category,content_outputs = self.content_encoder(content_inputs)
-        reshaped_content_category = self.reshape_tensor(content_category, is_train)
-        max_content_category = torch.max(reshaped_content_category,dim=1)[0]
-        
-        
-        
-        repeat_GT =  GT.repeat(1, GT.shape[1]*self.config.datasetConfig.inputContentNum, 1, 1)
-        GT_content_category,GT_content_outputs = self.content_encoder(repeat_GT)
-        GT_content_last = GT_content_outputs[-1]
-
-        style_category,style_outputs = self.style_encoder(style_inputs)
-        reshaped_style_category = self.reshape_tensor(style_category, is_train)
-        max_style_category = torch.max(reshaped_style_category,dim=1)[0]
-        GT_style_category,GT_style_outputs = self.style_encoder(GT)
-        GT_style_last = GT_style_outputs[-1]
-
-        GT_output = (GT_content_last,GT_style_last,GT_content_category,GT_style_category)
-
-        enc_content_list,enc_style_list = [],[] 
-        reshaped_style_list = []
-        for content,style in zip(content_outputs,style_outputs):
-            # reshaped_content_outputs = self.reshape_tensor(content,is_train)
-            # max_content_output = torch.max(reshaped_content_outputs,dim=1)[0]
+        content_category_onReal,content_outputs_onReal = self.content_encoder(content_inputs)
+        style_category_onReal,style_outputs_onReal = self.style_encoder(style_inputs)
+        enc_content_list_onReal,enc_style_list_onReal = [],[] 
+        reshaped_style_list_onReal = []
+        for content,style in zip(content_outputs_onReal,style_outputs_onReal):
             reshaped_style_outputs = self.reshape_tensor(style,is_train)
             max_style_output = torch.max(reshaped_style_outputs,dim=1)[0]
-
-            # 将64个相同content的encoder结果加入列表，用于mix
-            enc_content_list.append(content)
-
-            # 将5个相同style的encoder结果的最大值加入列表，用于mix
-            enc_style_list.append(max_style_output)
-            # 将5个相同style的encoder结果的每个值加入列表
-            reshaped_style_list.append(reshaped_style_outputs)
+            enc_content_list_onReal.append(content)
+            enc_style_list_onReal.append(max_style_output)
+            reshaped_style_list_onReal.append(reshaped_style_outputs)
 
         # mix
-        mix_output = self.mixer(enc_content_list,enc_style_list)
-
+        mix_output = self.mixer(enc_content_list_onReal,enc_style_list_onReal)
+        
         # decode
         decode_output_list = self.decoder(mix_output)
-        
-        
-        
         generated = decode_output_list[-1]
+
+        # encode the groundtruth
+        GT_content_category,GT_content_outputs = self.content_encoder(GT.repeat(1, GT.shape[1]*self.config.datasetConfig.inputContentNum, 1, 1))
+        GT_style_category,GT_style_outputs = self.style_encoder(GT)
+        
+        # encode the generated
         contentCategoryOnGenerated, contentFeaturesOnGenerated = self.content_encoder(generated.repeat((1,self.config.datasetConfig.inputContentNum,1,1)))
-        reshaped_content_category_onGenerated = self.reshape_tensor(contentCategoryOnGenerated, is_train)
-        max_content_category_onGenerated = torch.max(reshaped_content_category_onGenerated,dim=1)[0]
-        # = [ii.cnn for ii in contentFeaturesOnGenerated]
-        
-        
         styleCategoryOnGenerated, styleFeaturesOnGenerated = self.style_encoder(generated)
-        # enc_style_onGenerated_list= [ii.cnn for ii in styleFeaturesOnGenerated]
-        # styleFeaturesOnGenerated=styleFeaturesOnGenerated.cnn
-        reshaped_style_category_onGenerated = self.reshape_tensor(styleCategoryOnGenerated, is_train)
-        max_style_category_onGenerated = torch.max(reshaped_style_category_onGenerated,dim=1)[0]
         
         
-        return enc_content_list, max_content_category,contentFeaturesOnGenerated,max_content_category_onGenerated, \
-                reshaped_style_list, max_style_category,styleFeaturesOnGenerated,max_style_category_onGenerated, \
-                decode_output_list, GT_output #style的loss需要5个都算
+
+        # process
+        max_content_category_onReal = torch.max(self.reshape_tensor(content_category_onReal, is_train),dim=1)[0]
+        max_style_category_onReal = torch.max(self.reshape_tensor(style_category_onReal, is_train),dim=1)[0]
+        max_content_category_onGenerated = torch.max(self.reshape_tensor(contentCategoryOnGenerated, is_train),dim=1)[0]
+        max_style_category_onGenerated = torch.max(self.reshape_tensor(styleCategoryOnGenerated, is_train),dim=1)[0]
+        
+
+        encodedContentFeatures={}
+        encodedStyleFeatures={}
+        encodedContentCategory={}
+        encodedStyleCategory={}
+        
+        encodedContentFeatures.update({'real': enc_content_list_onReal[-1]})
+        encodedContentFeatures.update({'fake': contentFeaturesOnGenerated[-1]})
+        encodedContentFeatures.update({'groundtruth': GT_content_outputs[-1]})
+        
+        encodedStyleFeatures.update({'real': reshaped_style_list_onReal[-1]})
+        encodedStyleFeatures.update({'fake': styleFeaturesOnGenerated[-1]})
+        encodedStyleFeatures.update({'groundtruth': GT_style_outputs[-1]})
+        
+        encodedContentCategory.update({'real': max_content_category_onReal})
+        encodedContentCategory.update({'fake': max_content_category_onGenerated})
+        encodedContentCategory.update({'groundtruth': GT_content_category})
+        
+        encodedStyleCategory.update({'real': max_style_category_onReal})
+        encodedStyleCategory.update({'fake': max_style_category_onGenerated})
+        encodedStyleCategory.update({'groundtruth': GT_style_category})
+        
+        return encodedContentFeatures, encodedStyleFeatures, encodedContentCategory, encodedStyleCategory, generated
+        
+
     
     def reshape_tensor(self,input_tensor,is_train):
-        # if is_train:
-        #     batchsize = self.batchsize
-        # else:
-        #     batchsize = self.val_batchsize
 
         if len(input_tensor.shape) == 4:
             return input_tensor.reshape(self.config.trainParams.batchSize,input_tensor.shape[0]//self.config.trainParams.batchSize,input_tensor.shape[1],input_tensor.shape[2],input_tensor.shape[3])
@@ -131,32 +127,3 @@ class WNetGenerator(nn.Module):
             return input_tensor.reshape(self.config.trainParams.batchSize,input_tensor.shape[0]//self.config.trainParams.batchSize,input_tensor.shape[1],input_tensor.shape[2])
         elif len(input_tensor.shape) == 2:
             return input_tensor.reshape(self.config.trainParams.batchSize,input_tensor.shape[0]//self.config.trainParams.batchSize,input_tensor.shape[1])
-    
-if __name__ == '__main__':
-    cfg['content_yaml'] = 'cmy/test_list/content_dir.yaml'
-    cfg['GT_style_yaml'] = 'cmy/test_list/train_GT_dir.yaml'
-    cfg['reference_style_yaml'] = 'cmy/test_list/train_reference_style_dir.yaml' 
-    cfg['val_GT_style_yaml'] = 'cmy/test_list/val_GT_dir.yaml'
-    cfg['val_reference_style_yaml'] = 'cmy/test_list/val_reference_style_dir.yaml' 
-    cfg['batch_size'] = 8
-    cfg['val_batch_size'] = 8
-
-    batchsize = 8
-     # 创建CASIA数据集实例
-    casia_dataset = CASIA_Dataset(cfg)
-    # 创建DataLoader
-    casia_loader = DataLoader(casia_dataset, batch_size=batchsize, shuffle=False,drop_last=True)
-    Wnet = WNetGenerator(cfg)
-    # 读入第一个样本
-    for contents, styles, GT_style in casia_loader:
-        contents, styles, GT_style = contents.cuda(), styles.cuda(), GT_style.cuda() 
-        # reshape_contents = contents.reshape(batchsize*64, 1, 64, 64)
-
-        reshape_styles = styles.reshape(batchsize*5,1,64,64)
-
-        enc_content_list,content_category, \
-        reshaped_enc_style_list, style_category, \
-        decode_output_list,GT_output = Wnet(contents,reshape_styles,GT_style)
-
-        print(decode_output_list[-2].shape)
-        

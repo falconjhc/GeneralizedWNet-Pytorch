@@ -184,94 +184,96 @@ class WNetGeneratorBase(nn.Module):
         return generated
         
     def forward(self,content_inputs,style_inputs,GT, is_train=True):
-        contentCategory, contentFeatures = self.contentEncoder(content_inputs)
-        reshaped_content_category = self.reshape_tensor(contentCategory, is_train)
-        max_content_category = torch.max(reshaped_content_category,dim=1)[0]
-        repeat_GT =  GT.repeat(1, GT.shape[1]*self.config.datasetConfig.inputContentNum, 1, 1)
-        GT_content_category,GT_content_outputs = self.contentEncoder(repeat_GT)
-        GT_content_last = GT_content_outputs[-1].cnn
-        
-        styleCategoryFull=[]
-        styleFeatureList=[]
+        contentCategory_onReal, contentFeatures_onReal = self.contentEncoder(content_inputs)        
+        styleCategoryFull_onReal=[]
+        styleFeatureList_onReal=[]
         for ii in range(self.encodingBlockNum):
-            styleFeatureList.append([])
+            styleFeatureList_onReal.append([])
         
-        style_inputs = style_inputs.reshape((self.config.trainParams.batchSize, self.config.datasetConfig.inputStyleNum, 64,64))
+        style_inputs = style_inputs.reshape((self.config.trainParams.batchSize, self.config.datasetConfig.inputStyleNum, 
+                                             self.config.datasetConfig.imgWidth,self.config.datasetConfig.imgWidth))
         for ii in range(self.config.datasetConfig.inputStyleNum):
-            this_style_category, this_style_outputs = self.styleEncoder(torch.unsqueeze(style_inputs[:,ii,:,:], dim=1))
+            this_style_category_onReal, this_style_outputs_onReal = self.styleEncoder(torch.unsqueeze(style_inputs[:,ii,:,:], dim=1))
             if ii ==0:
-                styleCategoryFull = this_style_category
+                styleCategoryFull_onReal = this_style_category_onReal
             else:
-                styleCategoryFull = torch.concat((styleCategoryFull,this_style_category), dim=0)
-            #styleCategoryList.append(this_style_category)
-            for jj in range(len(this_style_outputs)):
-                styleFeatureList[jj].append(this_style_outputs[jj])
+                styleCategoryFull_onReal = torch.concat((styleCategoryFull_onReal,this_style_category_onReal), dim=0)
+            for jj in range(len(this_style_outputs_onReal)):
+                styleFeatureList_onReal[jj].append(this_style_outputs_onReal[jj])
         
-            
-        reshaped_style_category = self.reshape_tensor(styleCategoryFull, is_train)
-        max_style_category = torch.max(reshaped_style_category,dim=1)[0]
-        GT_style_category,GT_style_outputs = self.styleEncoder(GT)
-        GT_style_last = GT_style_outputs[-1].cnn
         
-        reshaped_style_list=[]
-        for ii in range(len(styleFeatureList)):
-            for jj in range(len(styleFeatureList[ii])):
+        
+        
+        reshaped_style_list_onReal=[]
+        for ii in range(len(styleFeatureList_onReal)):
+            for jj in range(len(styleFeatureList_onReal[ii])):
                 if jj ==0:
-                    thisFeature = torch.unsqueeze(styleFeatureList[ii][jj].cnn,1)
+                    thisFeature = torch.unsqueeze(styleFeatureList_onReal[ii][jj].cnn,1)
                 else:
-                    thisFeature = torch.concat((thisFeature,torch.unsqueeze(styleFeatureList[ii][jj].cnn,1)),1)
-            reshaped_style_list.append(thisFeature)
-        enc_content_list= [ii.cnn for ii in contentFeatures]
+                    thisFeature = torch.concat((thisFeature,torch.unsqueeze(styleFeatureList_onReal[ii][jj].cnn,1)),1)
+            reshaped_style_list_onReal.append(thisFeature)
+        enc_content_list_onReal= [ii.cnn for ii in contentFeatures_onReal]
+
         
-        
-        
-        GT_output = (GT_content_last,
-                     GT_style_last,
-                     GT_content_category,
-                     GT_style_category)
-        
-        
-        mix_output= self.mixer(styleFeatures=styleFeatureList, contentFeatures=contentFeatures)
+        mix_output = self.mixer(styleFeatures=styleFeatureList_onReal, contentFeatures=contentFeatures_onReal)
         decode_output_list=self.decoder(mix_output)
         for ii in range(len(decode_output_list)):
             if ii ==0:
                 continue
             else:
                decode_output_list[ii]=decode_output_list[ii].cnn 
-        
-        
         decode_output_list.reverse()
-        
-        
         generated = decode_output_list[-1]
+        
+        
+        # encoded the groundtruth
+        GT_content_category,GT_content_outputs = self.contentEncoder(GT.repeat(1, GT.shape[1]*self.config.datasetConfig.inputContentNum, 1, 1))
+        GT_style_category,GT_style_outputs = self.styleEncoder(GT)
+        
+        
+        # encode the generated
         contentCategoryOnGenerated, contentFeaturesOnGenerated = self.contentEncoder(generated.repeat((1,self.config.datasetConfig.inputContentNum,1,1)))
-        reshaped_content_category_onGenerated = self.reshape_tensor(contentCategoryOnGenerated, is_train)
-        max_content_category_onGenerated = torch.max(reshaped_content_category_onGenerated,dim=1)[0]
         enc_content_onGenerated_list= [ii.cnn for ii in contentFeaturesOnGenerated]
-        
-        
         styleCategoryOnGenerated, styleFeaturesOnGenerated = self.styleEncoder(generated)
         enc_style_onGenerated_list= [ii.cnn for ii in styleFeaturesOnGenerated]
-        # styleFeaturesOnGenerated=styleFeaturesOnGenerated.cnn
-        reshaped_style_category_onGenerated = self.reshape_tensor(styleCategoryOnGenerated, is_train)
-        max_style_category_onGenerated = torch.max(reshaped_style_category_onGenerated,dim=1)[0]
+        contentFeaturesOnGenerated=enc_content_onGenerated_list
+        styleFeaturesOnGenerated = enc_style_onGenerated_list
         
         
         
+        # process
+        max_content_category_onReal = torch.max(self.reshape_tensor(contentCategory_onReal, is_train),dim=1)[0] 
+        max_style_category_onReal = torch.max(self.reshape_tensor(styleCategoryFull_onReal, is_train),dim=1)[0]
+        max_content_category_onGenerated = torch.max(self.reshape_tensor(contentCategoryOnGenerated, is_train),dim=1)[0]
+        max_style_category_onGenerated = torch.max(self.reshape_tensor(styleCategoryOnGenerated, is_train),dim=1)[0]
+        
+        encodedContentFeatures={}
+        encodedStyleFeatures={}
+        encodedContentCategory={}
+        encodedStyleCategory={}
+        
+        encodedContentFeatures.update({'real': enc_content_list_onReal[-1]})
+        encodedContentFeatures.update({'fake': contentFeaturesOnGenerated[-1]})
+        encodedContentFeatures.update({'groundtruth': GT_content_outputs[-1].cnn})
+        
+        encodedStyleFeatures.update({'real': reshaped_style_list_onReal[-1]})
+        encodedStyleFeatures.update({'fake': styleFeaturesOnGenerated[-1]})
+        encodedStyleFeatures.update({'groundtruth': GT_style_outputs[-1].cnn})
+        
+        encodedContentCategory.update({'real': max_content_category_onReal})
+        encodedContentCategory.update({'fake': max_content_category_onGenerated})
+        encodedContentCategory.update({'groundtruth': GT_content_category})
+        
+        encodedStyleCategory.update({'real': max_style_category_onReal})
+        encodedStyleCategory.update({'fake': max_style_category_onGenerated})
+        encodedStyleCategory.update({'groundtruth': GT_style_category})
         
         
-        return enc_content_list, max_content_category,enc_content_onGenerated_list,max_content_category_onGenerated, \
-                reshaped_style_list, max_style_category,enc_style_onGenerated_list,max_style_category_onGenerated, \
-                decode_output_list, GT_output #style的loss需要5个都算
-    
+        return encodedContentFeatures, encodedStyleFeatures, encodedContentCategory, encodedStyleCategory, generated
+
     
         
     def reshape_tensor(self,input_tensor,is_train):
-        # if is_train:
-        #     batchsize = self.batchsize
-        # else:
-        #     batchsize = self.val_batchsize
-
         if len(input_tensor.shape) == 4:
             return input_tensor.reshape(self.config.trainParams.batchSize,input_tensor.shape[0]//self.config.trainParams.batchSize,input_tensor.shape[1],input_tensor.shape[2],input_tensor.shape[3])
         elif len(input_tensor.shape) == 3:

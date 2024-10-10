@@ -6,8 +6,8 @@ dataPathRoot = '/data0/haochuan/'
 hyperParams = {
         'seed':1,
         'debugMode':1,
-        'expID':'20241007',# experiment name prefix
-        'expDir': '/data-shared/server02/data1/haochuan/Character/Records20241006/',
+        'expID':'20241010-TestPytorch-PF64PF50-BackNoOrgs-04FinalizedInit',# experiment name prefix
+        'expDir': '/data-shared/server02/data1/haochuan/Character/Records20241008/',
         
         # user interface
         'printInfoSeconds':3,

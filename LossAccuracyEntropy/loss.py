@@ -79,30 +79,32 @@ class WLoss(nn.Module):
         
             
 
-    def GeneratorLoss(self, reshaped_content_list,content_category,reshaped_content_list_ongenerated, content_category_ongenerated,\
-                        reshaped_style_list, style_category,reshaped_style_list_onGenerated, style_category_onGenerated,\
-                        decode_output_list,GT_output, GT,content_onehot,style_onehot):
+    # def GeneratorLoss(self, reshaped_content_list,content_category,reshaped_content_list_ongenerated, content_category_ongenerated,\
+    #                     reshaped_style_list, style_category,reshaped_style_list_onGenerated, style_category_onGenerated,\
+    #                     decode_output_list,GT_output, GT,content_onehot,style_onehot):
+    def GeneratorLoss(self, encodedContentFeatures, encodedStyleFeatures, encodedContentCategory, encodedStyleCategory,\
+                        generated, GT, content_onehot,style_onehot):
         # l1 loss
-        l1_loss = F.l1_loss(decode_output_list[-1], GT, reduction='mean')
+        l1_loss = F.l1_loss(generated, GT, reduction='mean')
 
         # const_content loss
-        GT_content_enc = GT_output[0]
-        const_content_loss_onReal = F.mse_loss(reshaped_content_list[-1],GT_content_enc)
-        const_content_loss_onFake = F.mse_loss(reshaped_content_list_ongenerated[-1],GT_content_enc)
+        GT_content_enc = encodedContentFeatures['groundtruth']
+        const_content_loss_onReal = F.mse_loss(encodedContentFeatures['real'],GT_content_enc)
+        const_content_loss_onFake = F.mse_loss(encodedContentFeatures['fake'],GT_content_enc)
         
         
         # const_style loss
-        GT_style_enc = GT_output[1]
-        reshaped_styles = reshaped_style_list[-1] # batchsize * input style num * channels * width * height
+        GT_style_enc = encodedStyleFeatures['groundtruth']
+        reshaped_styles = encodedStyleFeatures['real'] # batchsize * input style num * channels * width * height
         reshaped_styles = reshaped_styles.permute(1,0,2,3,4)#  input style num *batchsize * channels * width * height
         const_style_loss_onReal = [F.mse_loss(enc_style, GT_style_enc) for enc_style in reshaped_styles] # enc_style: batchsize * channels * width * height
         const_style_loss_onReal = torch.mean(torch.stack(const_style_loss_onReal))
-        const_style_loss_onFake = F.mse_loss(reshaped_style_list_onGenerated[-1],GT_style_enc)
+        const_style_loss_onFake = F.mse_loss(encodedStyleFeatures['fake'],GT_style_enc)
 
         # category loss
         content_category_OnOrg,content_category_OnGen = 0,0
-        GT_content_category = GT_output[2]
-        for GT_logits,fake_logits,onehot in zip(content_category,GT_content_category,content_onehot):
+        GT_content_category = encodedContentCategory['groundtruth']
+        for GT_logits,fake_logits,onehot in zip(encodedContentCategory['real'],GT_content_category,content_onehot):
             GT_logits = torch.nn.functional.softmax(GT_logits, dim=0)
             content_category_OnOrg += F.cross_entropy(GT_logits, onehot)
             fake_logits = torch.nn.functional.softmax(fake_logits, dim=0)            
@@ -111,8 +113,8 @@ class WLoss(nn.Module):
         content_category_OnGen /= len(GT_content_category)
         
         style_category_OnOrg,style_category_OnGen = 0,0
-        GT_style_category = GT_output[3]
-        for GT_logits,fake_logits,onehot in zip(style_category,GT_style_category,style_onehot):
+        GT_style_category = encodedStyleCategory['groundtruth']
+        for GT_logits,fake_logits,onehot in zip(encodedStyleCategory['real'],GT_style_category,style_onehot):
             GT_logits = torch.nn.functional.softmax(GT_logits, dim=0)
             style_category_OnOrg += F.cross_entropy(GT_logits, onehot)
             fake_logits = torch.nn.functional.softmax(fake_logits, dim=0)            
@@ -171,17 +173,15 @@ class WLoss(nn.Module):
 
 
 
-    def forward(self, reshaped_enc_content_list,content_category,enc_content_onGenerated_list, content_category_onGenerated, \
-                    reshaped_enc_style_list, style_category,enc_style_onGenerated_list, style_category_onGenerated,\
-                    decode_output_list,GT_output,GT,content_onehot,style_onehot):
+    def forward(self, encodedContentFeatures, encodedStyleFeatures, encodedContentCategory, encodedStyleCategory,\
+        generated, GT, content_onehot,style_onehot):
         # generator_const_loss
         l1_loss,const_content_loss_onReal,const_style_loss_onReal,const_content_loss_onFake,const_style_loss_onFake, content_category_OnOrg,content_category_OnGen,style_category_OnOrg,style_category_OnGen = \
-            self.GeneratorLoss(reshaped_enc_content_list,content_category,enc_content_onGenerated_list, content_category_onGenerated,\
-                                reshaped_enc_style_list, style_category,enc_style_onGenerated_list, style_category_onGenerated,\
-                                decode_output_list,GT_output, GT,content_onehot,style_onehot)
+            self.GeneratorLoss(encodedContentFeatures, encodedStyleFeatures, encodedContentCategory, encodedStyleCategory,\
+                        generated, GT, content_onehot,style_onehot)
         # generator_category_loss
         deepPerceptualContentSum,deepPerceptualStyleSum,contentMSEList,styleMSEList =\
-            self.FeatureExtractorLoss(GT=GT,imgFake=decode_output_list[-1])
+            self.FeatureExtractorLoss(GT=GT,imgFake=generated)
 
         # if const_content_loss <= 1e8: 
         #     self.Lconst_content_Penalty = 0.
@@ -208,28 +208,28 @@ class WLoss(nn.Module):
 
         return sumLossG,lossDict
 
-if __name__ == '__main__':
-    cfg['content_yaml'] = 'cmy/test_list/content_dir.yaml'
-    cfg['GT_style_yaml'] = 'cmy/test_list/train_GT_dir.yaml'
-    cfg['reference_style_yaml'] = 'cmy/test_list/train_reference_style_dir.yaml'
+# if __name__ == '__main__':
+#     cfg['content_yaml'] = 'cmy/test_list/content_dir.yaml'
+#     cfg['GT_style_yaml'] = 'cmy/test_list/train_GT_dir.yaml'
+#     cfg['reference_style_yaml'] = 'cmy/test_list/train_reference_style_dir.yaml'
 
-    batchsize = cfg['batchsize']
-     # 创建CASIA数据集实例
-    casia_dataset = CASIA_Dataset(cfg)
-    # 创建DataLoader
-    casia_loader = DataLoader(casia_dataset, batch_size=batchsize, shuffle=False,drop_last=True)
-    Wnet = WNetGenerator(cfg)
-    loss = WLoss(cfg)
-    # 读入第一个样本
-    for contents, styles, GT_style in casia_loader:
-        contents, styles, GT_style = contents.cuda(), styles.cuda(), GT_style.cuda() 
-        # reshape_contents = contents.reshape(batchsize*64, 1, 64, 64)
+#     batchsize = cfg['batchsize']
+#      # 创建CASIA数据集实例
+#     casia_dataset = CASIA_Dataset(cfg)
+#     # 创建DataLoader
+#     casia_loader = DataLoader(casia_dataset, batch_size=batchsize, shuffle=False,drop_last=True)
+#     Wnet = WNetGenerator(cfg)
+#     loss = WLoss(cfg)
+#     # 读入第一个样本
+#     for contents, styles, GT_style in casia_loader:
+#         contents, styles, GT_style = contents.cuda(), styles.cuda(), GT_style.cuda() 
+#         # reshape_contents = contents.reshape(batchsize*64, 1, 64, 64)
 
-        reshape_styles = styles.reshape(batchsize*5,1,64,64)
+#         reshape_styles = styles.reshape(batchsize*5,1,64,64)
 
-        enc_content_list,content_category, \
-        reshaped_enc_style_list, style_category, \
-        decode_output_list,GT_output = Wnet(contents,reshape_styles,GT_style)
+#         enc_content_list,content_category, \
+#         reshaped_enc_style_list, style_category, \
+#         decode_output_list,GT_output = Wnet(contents,reshape_styles,GT_style)
 
-        sumLossG,Loss_dict = loss(enc_content_list,reshaped_enc_style_list,decode_output_list,GT_output,GT_style)
-        print(Loss_dict)
+#         sumLossG,Loss_dict = loss(enc_content_list,reshaped_enc_style_list,decode_output_list,GT_output,GT_style)
+#         print(Loss_dict)

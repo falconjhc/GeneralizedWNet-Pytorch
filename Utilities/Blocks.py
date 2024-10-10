@@ -17,8 +17,11 @@ from Utilities.VisionTransformer import VisionTransformer as VIT
 from Utilities.VisionTransformer import PatchMerging as PatchMerger
 from Utilities.VisionTransformer import PatchExpansion as PatchExpander
 
-from torchvision.models.resnet import  conv1x1, conv3x3
+# from torchvision.models.resnet import  conv1x1, conv3x3
 import torch.nn as nn
+
+# RELU = nn.ReLU(inplace=True)
+RELU = nn.LeakyReLU(0.2, inplace=True)
 
 def deconv1x1(in_planes, out_planes, stride=1):
     """1x1 transposed convolution (deconvolution) with stride and output padding for exact size"""
@@ -28,6 +31,24 @@ def deconv3x3(in_planes, out_planes, stride=1):
     """3x3 transposed convolution (deconvolution) to double the spatial size"""
     return nn.ConvTranspose2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, 
                               output_padding=stride-1, bias=False)
+    
+
+def conv3x3(in_planes: int, out_planes: int, stride: int = 1, groups: int = 1, dilation: int = 1) -> nn.Conv2d:
+    """3x3 convolution with padding"""
+    return nn.Conv2d(
+        in_planes,
+        out_planes,
+        kernel_size=3,
+        stride=stride,
+        padding=dilation,
+        groups=groups,
+        bias=False,
+        dilation=dilation,
+    )
+
+def conv1x1(in_planes: int, out_planes: int, stride: int = 1) -> nn.Conv2d:
+    """1x1 convolution"""
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
     
     
 class BlockFeature(object):
@@ -83,7 +104,7 @@ class EncodingBottleneckBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(outDims['MapC'])
         self.conv3 = conv1x1(outDims['MapC'], outDims['MapC'])
         self.bn3 = nn.BatchNorm2d(outDims['MapC'])
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = RELU
         # self.downsample = downsample
         self.stride = stride
         self.patchExtractor=PatchExtractor(featureDim=outDims['MapC'])
@@ -124,7 +145,7 @@ class EncodingBasicBlock(nn.Module):
             
         self.conv1 = conv3x3(inDims['MapC'], outDims['MapC'], stride)
         self.bn1 = nn.BatchNorm2d(outDims['MapC'])
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = RELU
         self.conv2 = conv3x3(outDims['MapC'], outDims['MapC'])
         self.bn2 = nn.BatchNorm2d(outDims['MapC'])
         self.stride = stride
@@ -250,7 +271,7 @@ class DecodingBasicBlock(nn.Module):
         else:
             self.conv1 = deconv3x3(inDims['MapC'], outDims['MapC'], stride)
         self.bn1 = nn.BatchNorm2d(outDims['MapC'])
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = RELU
         self.tanh = nn.Tanh()
         self.conv2 = deconv3x3(outDims['MapC'], outDims['MapC'])
         self.bn2 = nn.BatchNorm2d(outDims['MapC'])
@@ -307,7 +328,7 @@ class DecodingBottleneckBlock(nn.Module):
         
         self.conv3 = deconv1x1(outDims['MapC'], outDims['MapC'])
         self.bn3 = nn.BatchNorm2d(outDims['MapC'])
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = RELU
         self.tanh = nn.Tanh()
         # self.downsample = downsample
         self.stride = stride
